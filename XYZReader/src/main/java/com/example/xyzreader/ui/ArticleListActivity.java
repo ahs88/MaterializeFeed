@@ -56,6 +56,15 @@ public class ArticleListActivity extends ActionBarActivity implements
         if (savedInstanceState == null) {
             refresh();
         }
+
+        mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                refresh();
+                mSwipeRefreshLayout.setRefreshing(false);
+            }
+        });
+
     }
 
     private void refresh() {

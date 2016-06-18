@@ -1,7 +1,0 @@
-#Sat Jun 11 13:28:28 IST 2016
-base.0=/Users/shetty/Downloads/xyzreader/XYZReader/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run-bootstrap_b7a9fdb43dbf0ff69fbac87fc17d7be21acf0f15
-renamed.1=classes.dex
-renamed.0=classes2.dex
-file.1=/Users/shetty/Downloads/xyzreader/XYZReader/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run_78b36355b96bc07db3668b88e56cafdcf0482923/classes.dex
-base.1=/Users/shetty/Downloads/xyzreader/XYZReader/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run_78b36355b96bc07db3668b88e56cafdcf0482923
-file.0=/Users/shetty/Downloads/xyzreader/XYZReader/build/intermediates/transforms/dex/debug/folders/1000/10/instant-run-bootstrap_b7a9fdb43dbf0ff69fbac87fc17d7be21acf0f15/classes.dex
