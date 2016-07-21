@@ -1,5 +1,6 @@
 package com.example.xyzreader.ui;
 
+import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.LoaderManager;
 import android.content.Intent;
@@ -10,23 +11,36 @@ import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
+import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.app.ShareCompat;
+import android.support.v4.widget.NestedScrollView;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.graphics.Palette;
+import android.support.v7.widget.LinearLayoutCompat;
+import android.support.v7.widget.Toolbar;
 import android.text.Html;
 import android.text.format.DateUtils;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.ImageLoader;
 import com.example.xyzreader.R;
 import com.example.xyzreader.data.ArticleLoader;
+import com.example.xyzreader.ui.utils.Utils;
+import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 /**
  * A fragment representing a single Article detail screen. This fragment is
@@ -34,7 +48,7 @@ import com.example.xyzreader.data.ArticleLoader;
  * tablets) or a {@link ArticleDetailActivity} on handsets.
  */
 public class ArticleDetailFragment extends Fragment implements
-        LoaderManager.LoaderCallbacks<Cursor> {
+        LoaderManager.LoaderCallbacks<Cursor>,NestedScrollView.OnScrollChangeListener,AppBarLayout.OnOffsetChangedListener {
     private static final String TAG = "ArticleDetailFragment";
 
     public static final String ARG_ITEM_ID = "item_id";
@@ -54,6 +68,22 @@ public class ArticleDetailFragment extends Fragment implements
     private int mScrollY;
     private boolean mIsCard = false;
     private int mStatusBarFullOpacityBottom;
+    private CollapsingToolbarLayout collapsingToolbarLayout;
+    private boolean isVisibleToUser;
+    private NestedScrollView bodyContainer;
+    private int headerHeight;
+    private int minHeaderTranslation;
+    private LinearLayout headerView;
+    private TextView titleView;
+    private TextView bylineView;
+    private int toolbarTitleLeftMargin;
+    private TextView articleTitleToolBar;
+    private AppBarLayout appBar;
+    private int headerHeightPx;
+    private int minOffsetHeight;
+    private Toolbar mToolbar;
+    private int mCurrentToolbarColor;
+    private int mCurrentToolbarTitleColor;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -81,7 +111,19 @@ public class ArticleDetailFragment extends Fragment implements
         mIsCard = getResources().getBoolean(R.bool.detail_is_card);
         mStatusBarFullOpacityBottom = getResources().getDimensionPixelSize(
                 R.dimen.detail_card_top_margin);
-        setHasOptionsMenu(true);
+        //setHasOptionsMenu(true);
+        headerHeight = (int)getResources().getDimensionPixelSize(R.dimen.header_height);
+
+// The height of your fully collapsed header view. Actually the Toolbar height (56dp)
+        int minHeaderHeight = (int)getResources().getDimensionPixelSize(R.dimen.app_bar_height);
+        minOffsetHeight = headerHeight - minHeaderHeight-100;
+// The left margin of the Toolbar title (according to specs, 72dp)
+        toolbarTitleLeftMargin = getResources().getDimensionPixelSize(R.dimen.toolbar_left_margin);
+
+// Added after edit
+
+
+
     }
 
     public ArticleDetailActivity getActivityCast() {
@@ -96,37 +138,37 @@ public class ArticleDetailFragment extends Fragment implements
         // the fragment's onCreate may cause the same LoaderManager to be dealt to multiple
         // fragments because their mIndex is -1 (haven't been added to the activity yet). Thus,
         // we do this in onActivityCreated.
-        getLoaderManager().initLoader(0, null, this);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
+
         mRootView = inflater.inflate(R.layout.fragment_article_detail, container, false);
-        /*mDrawInsetsFrameLayout = (DrawInsetsFrameLayout)
-                mRootView.findViewById(R.id.draw_insets_frame_layout);
-        mDrawInsetsFrameLayout.setOnInsetsCallback(new DrawInsetsFrameLayout.OnInsetsCallback() {
+        mToolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getActivity().getWindow().setStatusBarColor(getActivity().getResources().getColor(R.color.color_primary));
+        }
+        ((AppCompatActivity)getActivity()).setSupportActionBar(mToolbar);
+
+                /*((AppCompatActivity) getActivity()).getSupportActionBar().setHomeButtonEnabled(true);
+                ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+                ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayShowHomeEnabled(true);*/
+        mToolbar.setNavigationIcon(R.drawable.ic_arrow_back);
+        mToolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
-            public void onInsetsChanged(Rect insets) {
-                mTopInset = insets.top;
+            public void onClick(View v) {
+                getActivity().finish();
             }
         });
-
-        mScrollView = (ObservableScrollView) mRootView.findViewById(R.id.scrollview);
-        mScrollView.setCallbacks(new ObservableScrollView.Callbacks() {
-            @Override
-            public void onScrollChanged() {
-                mScrollY = mScrollView.getScrollY();
-                getActivityCast().onUpButtonFloorChanged(mItemId, ArticleDetailFragment.this);
-                mPhotoContainerView.setTranslationY((int) (mScrollY - mScrollY / PARALLAX_FACTOR));
-                updateStatusBar();
-            }
-        });
+        mToolbar.setTitle("");
+        setupToolBar();
 
 
-*/
+        setHasOptionsMenu(true);
+
         mStatusBarColorDrawable = new ColorDrawable(0);
-
+        articleTitleToolBar = (TextView)mRootView.findViewById(R.id.article_title_toolbar);
         mPhotoView = (ImageView) mRootView.findViewById(R.id.photo);
         mPhotoContainerView = mRootView.findViewById(R.id.photo_container);
 
@@ -142,6 +184,7 @@ public class ArticleDetailFragment extends Fragment implements
 
         bindViews();
         //updateStatusBar();
+
         return mRootView;
     }
 
@@ -176,20 +219,39 @@ public class ArticleDetailFragment extends Fragment implements
 
     private void bindViews() {
         if (mRootView == null) {
+            Log.d(TAG,"root View is null");
+
             return;
         }
 
-        TextView titleView = (TextView) mRootView.findViewById(R.id.article_title);
-        TextView bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
+
+        bodyContainer = (NestedScrollView)mRootView.findViewById(R.id.scrollLayout);
+        //headerHeight = getResources().getDimensionPixelSize(R.dimen.detail_title_text_size);
+        //minHeaderTranslation = -headerHeight +
+         //       getResources().getDimensionPixelOffset(R.dimen.app_bar_height);
+
+        headerView = (LinearLayout)mRootView.findViewById(R.id.meta_bar);
+        
+        bodyContainer.setOnScrollChangeListener(this);
+
+        appBar = (AppBarLayout)mRootView.findViewById(R.id.app_bar);
+        appBar.addOnOffsetChangedListener(this);
+        titleView = (TextView) mRootView.findViewById(R.id.article_title);
+        bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
         bylineView.setMovementMethod(new LinkMovementMethod());
         TextView bodyView = (TextView) mRootView.findViewById(R.id.article_body);
-//        bodyView.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
+      //  bodyView.setTypeface(Typeface.createFromAsset(getResources().getAssets(), "Rosario-Regular.ttf"));
 
         if (mCursor != null) {
             mRootView.setAlpha(0);
             mRootView.setVisibility(View.VISIBLE);
             mRootView.animate().alpha(1);
             titleView.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            articleTitleToolBar.setText(mCursor.getString(ArticleLoader.Query.TITLE));
+            articleTitleToolBar.setVisibility(View.GONE);
+            Log.d(TAG,"bindViews title:"+mCursor.getString(ArticleLoader.Query.TITLE)+" photo_url:"+mCursor.getString(ArticleLoader.Query.PHOTO_URL)+" isVisibleToUser:"+isVisibleToUser);
+
+            setupToolBar();
             bylineView.setText(Html.fromHtml(
                     DateUtils.getRelativeTimeSpanString(
                             mCursor.getLong(ArticleLoader.Query.PUBLISHED_DATE),
@@ -198,8 +260,36 @@ public class ArticleDetailFragment extends Fragment implements
                             + " by <font color='#ffffff'>"
                             + mCursor.getString(ArticleLoader.Query.AUTHOR)
                             + "</font>"));
+
+            //Log.d(TAG,"article string:"+mCursor.getString(ArticleLoader.Query.BODY));
+
+
             bodyView.setText(Html.fromHtml(mCursor.getString(ArticleLoader.Query.BODY)));
-            ImageLoaderHelper.getInstance(getActivity()).getImageLoader()
+
+
+            //need to use color palette here
+            Picasso.with(getActivity()).load(mCursor.getString(ArticleLoader.Query.PHOTO_URL)).into(new Target() {
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                    mPhotoView.setImageBitmap(bitmap);
+                    paletteGenerator(bitmap,12);
+                }
+
+                @Override
+                public void onBitmapFailed(Drawable errorDrawable) {
+
+                }
+
+                @Override
+                public void onPrepareLoad(Drawable placeHolderDrawable) {
+
+                }
+            });
+
+
+
+
+            /*ImageLoaderHelper.getInstance(getActivity()).getImageLoader()
                     .get(mCursor.getString(ArticleLoader.Query.PHOTO_URL), new ImageLoader.ImageListener() {
                         @Override
                         public void onResponse(ImageLoader.ImageContainer imageContainer, boolean b) {
@@ -208,9 +298,10 @@ public class ArticleDetailFragment extends Fragment implements
                                 Palette p = Palette.generate(bitmap, 12);
                                 mMutedColor = p.getDarkMutedColor(0xFF333333);
                                 mPhotoView.setImageBitmap(imageContainer.getBitmap());
-                                mRootView.findViewById(R.id.meta_bar)
-                                        .setBackgroundColor(mMutedColor);
+                                *//*mRootView.findViewById(R.id.meta_bar)
+                                        .setBackgroundColor(mMutedColor);*//*
                                 //updateStatusBar();
+
                             }
                         }
 
@@ -218,14 +309,38 @@ public class ArticleDetailFragment extends Fragment implements
                         public void onErrorResponse(VolleyError volleyError) {
 
                         }
-                    });
+                    });*/
         } else {
             mRootView.setVisibility(View.GONE);
-            titleView.setText("N/A");
-            bylineView.setText("N/A" );
+            //titleView.setText("N/A");
+            //bylineView.setText("N/A" );
             bodyView.setText("N/A");
         }
     }
+
+    public void paletteGenerator( Bitmap bitmap,int colorCount){
+        Palette.from(bitmap).maximumColorCount(colorCount).generate(new Palette.PaletteAsyncListener() {
+            @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+            @Override
+            public void onGenerated(Palette palette) {
+                Log.d(TAG,"palette onGenerated");
+                // Get the "vibrant" color swatch based on the bitmap
+                Palette.Swatch vibrant = palette.getVibrantSwatch();
+                if (vibrant != null) {
+                    // Set the background color of a layout based on the vibrant color
+                    mCurrentToolbarColor = vibrant.getRgb();
+
+                    // Update the title TextView with the proper text color
+                    mCurrentToolbarTitleColor = vibrant.getTitleTextColor();
+                    if(getActivity()!=null) {
+                        getActivity().getWindow().setStatusBarColor(mCurrentToolbarColor);
+                    }
+                }
+            }
+        });
+
+    }
+
 
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
@@ -234,6 +349,7 @@ public class ArticleDetailFragment extends Fragment implements
 
     @Override
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+        Log.d(TAG,"onLoadFinished");
         if (!isAdded()) {
             if (cursor != null) {
                 cursor.close();
@@ -253,8 +369,9 @@ public class ArticleDetailFragment extends Fragment implements
 
     @Override
     public void onLoaderReset(Loader<Cursor> cursorLoader) {
+        Log.d(TAG,"onLoaderReset");
         mCursor = null;
-        bindViews();
+        //bindViews();
     }
 
     public int getUpButtonFloor() {
@@ -267,4 +384,94 @@ public class ArticleDetailFragment extends Fragment implements
                 ? (int) mPhotoContainerView.getTranslationY() + mPhotoView.getHeight() - mScrollY
                 : mPhotoView.getHeight() - mScrollY;
     }
+
+
+    @Override
+    public void setUserVisibleHint(boolean isVisibleToUser) {
+        super.setUserVisibleHint(isVisibleToUser);
+        if(isVisibleToUser){
+            Log.d(TAG,"setUserVisibleHint");
+                getLoaderManager().initLoader(0, null, this);
+                //setupToolBar();
+        }
+
+        this.isVisibleToUser = isVisibleToUser;
+
+    }
+
+    public void setupToolBar(){
+        if(isVisibleToUser && mCursor != null) {
+            Log.d(TAG,"setting up  toolbar");
+            if(collapsingToolbarLayout == null) {
+                collapsingToolbarLayout = (CollapsingToolbarLayout) mRootView.findViewById(R.id.toolbar_layout);
+            }
+            collapsingToolbarLayout.setTitle("");
+            collapsingToolbarLayout.setTitleEnabled(false);
+        }
+    }
+
+    @Override
+    public void onScrollChange(NestedScrollView v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+
+     /*   headerView.setTranslationY(Math.max(0, scrollY + minHeaderTranslation));
+
+        // Scroll ratio (0 <= ratio <= 1). 
+        // The ratio value is 0 when the header is completely expanded, 
+        // 1 when it is completely collapsed
+
+
+
+        // Now that we have this ratio, we only have to apply translations, scales,
+        // alpha, etc. to the header views
+
+        // For instance, this will move the toolbar title & subtitle on the X axis 
+        // from its original position when the ListView will be completely scrolled
+        // down, to the Toolbar title position when it will be scrolled up.
+        titleView.setTranslationX(toolbarTitleLeftMargin * offset);
+        bylineView.setTranslationX(toolbarTitleLeftMargin * offset);*/
+        float offset = 1 - Math.max(
+                (float) (-minHeaderTranslation - scrollY) / -minHeaderTranslation, 0f);
+        Log.d(TAG,"onScrollChange offset:"+offset);
+
+    }
+
+    public enum State {
+        EXPANDED,
+        COLLAPSED,
+        TRANSITION
+    }
+
+    public State mCurrentState ;
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    @Override
+    public void onOffsetChanged(AppBarLayout appBarLayout, int verticalOffset) {
+
+        Log.d(TAG,"verticalOffset:"+verticalOffset+" offsetheight:"+minOffsetHeight);
+
+        if (verticalOffset == 0) {
+            if (mCurrentState != State.EXPANDED) {
+                articleTitleToolBar.setVisibility(View.GONE);
+                mToolbar.setBackgroundColor(getActivity().getResources().getColor(android.R.color.transparent));
+            }
+            mCurrentState = State.EXPANDED;
+        } else if (Math.abs(verticalOffset) >= appBarLayout.getTotalScrollRange()) {
+            if (mCurrentState != State.COLLAPSED) {
+                articleTitleToolBar.setVisibility(View.VISIBLE);
+                mToolbar.setBackgroundColor(mCurrentToolbarColor);
+
+            }
+            mCurrentState = State.COLLAPSED;
+        } else {
+            if (mCurrentState != State.TRANSITION) {
+                articleTitleToolBar.setVisibility(View.GONE);
+                mToolbar.setBackgroundColor(getActivity().getResources().getColor(android.R.color.transparent));
+                //getActivity().getWindow().setStatusBarColor(mCurrentToolbarC);
+            }
+            mCurrentState = State.TRANSITION;
+        }
+    }
+
+
+
 }
