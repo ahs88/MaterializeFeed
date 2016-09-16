@@ -1,5 +1,6 @@
 package com.example.xyzreader.ui;
 
+import android.annotation.TargetApi;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.LoaderManager;
@@ -8,28 +9,39 @@ import android.database.Cursor;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.design.widget.AppBarLayout;
 import android.support.v13.app.FragmentStatePagerAdapter;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
+import android.transition.Slide;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowInsets;
+import android.widget.ImageView;
 
 import com.example.xyzreader.R;
 import com.example.xyzreader.data.ArticleLoader;
 import com.example.xyzreader.data.ItemsContract;
+import com.squareup.picasso.Picasso;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 
 /**
  * An activity representing a single Article detail screen, letting you swipe between articles.
  */
 public class ArticleDetailActivity extends AppCompatActivity
-        implements LoaderManager.LoaderCallbacks<Cursor> {
+        implements LoaderManager.LoaderCallbacks<Cursor>,ArticleDetailFragment.DetailScreenInterface {
 
     private static final String TAG = ArticleDetailActivity.class.getName();
+    public static final String IMAGE_URL = "IMAGE_URL";
     private Cursor mCursor;
     private long mStartId;
 
@@ -41,16 +53,22 @@ public class ArticleDetailActivity extends AppCompatActivity
     private MyPagerAdapter mPagerAdapter;
     private View mUpButtonContainer;
     private View mUpButton;
+    private AppBarLayout appBarLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+
+        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().getDecorView().setSystemUiVisibility(
                     View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
                             View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
-        }
+        }*/
+        initActivityTransitions();
         setContentView(R.layout.activity_article_detail);
+        supportPostponeEnterTransition();
+        /*String imageUrl  = getIntent().getExtras().getString(IMAGE_URL);
+        Picasso.with(this).load(imageUrl).centerCrop().into((ImageView) findViewById(R.id.dummyView));*/
 
         getLoaderManager().initLoader(0, null, this);
 
@@ -109,6 +127,16 @@ public class ArticleDetailActivity extends AppCompatActivity
         }
     }
 
+    private void initActivityTransitions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Slide transition = new Slide();
+            transition.excludeTarget(android.R.id.statusBarBackground, true);
+            getWindow().setEnterTransition(transition);
+            getWindow().setReturnTransition(transition);
+        }
+    }
+
+
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
         return ArticleLoader.newAllArticlesInstance(this);
@@ -116,6 +144,7 @@ public class ArticleDetailActivity extends AppCompatActivity
 
     @Override
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+        Log.d(TAG,"cursor count:"+cursor.getCount());
         mCursor = cursor;
         mPagerAdapter.notifyDataSetChanged();
 
@@ -131,6 +160,8 @@ public class ArticleDetailActivity extends AppCompatActivity
                 }
                 mCursor.moveToNext();
             }
+            Log.d(TAG,"onLoadFinished:"+appBarLayout);
+
             mStartId = 0;
         }
     }
@@ -141,19 +172,34 @@ public class ArticleDetailActivity extends AppCompatActivity
         mPagerAdapter.notifyDataSetChanged();
     }
 
-    public void onUpButtonFloorChanged(long itemId, ArticleDetailFragment fragment) {
+    @Override
+    public void viewLoaded(AppBarLayout appBarLayout) {
+        this.appBarLayout = appBarLayout;
+        Log.d(TAG,"viewLoaded:"+appBarLayout);
+        ViewCompat.setTransitionName(appBarLayout, ArticleListActivity.EXTRA_IMAGE);
+       // supportPostponeEnterTransition();
+
+    }
+
+    @Override
+    public void imageLoaded() {
+        supportStartPostponedEnterTransition();
+    }
+
+    /*public void onUpButtonFloorChanged(long itemId, ArticleDetailFragment fragment) {
         if (itemId == mSelectedItemId) {
             mSelectedItemUpButtonFloor = fragment.getUpButtonFloor();
            // updateUpButtonPosition();
         }
-    }
+    }*/
 
-    private void updateUpButtonPosition() {
+   /* private void updateUpButtonPosition() {
         int upButtonNormalBottom = mTopInset + mUpButton.getHeight();
         mUpButton.setTranslationY(Math.min(mSelectedItemUpButtonFloor - upButtonNormalBottom, 0));
-    }
+    }*/
 
     private class MyPagerAdapter extends FragmentStatePagerAdapter {
+        HashMap<Integer,ArticleDetailFragment> fragments = new HashMap<>();
         public MyPagerAdapter(FragmentManager fm) {
             super(fm);
         }
@@ -161,17 +207,23 @@ public class ArticleDetailActivity extends AppCompatActivity
         @Override
         public void setPrimaryItem(ViewGroup container, int position, Object object) {
             super.setPrimaryItem(container, position, object);
-            ArticleDetailFragment fragment = (ArticleDetailFragment) object;
-            if (fragment != null) {
+            //ArticleDetailFragment fragment = (ArticleDetailFragment) object;
+            /*if (fragment != null) {
                 mSelectedItemUpButtonFloor = fragment.getUpButtonFloor();
                 //updateUpButtonPosition();
-            }
+            }*/
         }
 
         @Override
         public Fragment getItem(int position) {
             mCursor.moveToPosition(position);
-            return ArticleDetailFragment.newInstance(mCursor.getLong(ArticleLoader.Query._ID));
+
+            //ArticleDetailFragment detailFragment = fragments.get(position);
+             //if(detailFragment == null) {
+              ArticleDetailFragment detailFragment = ArticleDetailFragment.newInstance(mCursor.getLong(ArticleLoader.Query._ID));
+               //  fragments.put(position,detailFragment);
+             //}
+            return detailFragment;
         }
 
         @Override
@@ -180,11 +232,12 @@ public class ArticleDetailActivity extends AppCompatActivity
         }
     }
 
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         Log.d(TAG,"onOptionsItemSelected:"+item);
         if(item.getItemId() == android.R.id.home){
-            finish();
+            ActivityCompat.finishAfterTransition(this);
             return true;
         }
         return super.onOptionsItemSelected(item);

@@ -9,6 +9,7 @@
     android:clickable="true"
     android:focusable="true"
     app:cardCornerRadius="2dp"
+    android:id="@+id/root_view"
     android:foreground="?selectableItemBackground">
 
     <LinearLayout
@@ -18,7 +19,7 @@
 
         <!--suppress AndroidLintContentDescription -->
         <com.example.xyzreader.ui.DynamicHeightNetworkImageView
-            android:id="@+id/thumbnail"
+            android:id="@+id/image"
             android:layout_width="match_parent"
             android:layout_height="100dp"
             android:background="@color/photo_placeholder" />

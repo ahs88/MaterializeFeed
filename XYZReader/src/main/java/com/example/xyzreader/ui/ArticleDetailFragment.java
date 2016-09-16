@@ -133,7 +133,7 @@ public class ArticleDetailFragment extends Fragment implements
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
+        getLoaderManager().initLoader(0, null, this);
         // In support library r8, calling initLoader for a fragment in a FragmentPagerAdapter in
         // the fragment's onCreate may cause the same LoaderManager to be dealt to multiple
         // fragments because their mIndex is -1 (haven't been added to the activity yet). Thus,
@@ -145,10 +145,11 @@ public class ArticleDetailFragment extends Fragment implements
             Bundle savedInstanceState) {
 
         mRootView = inflater.inflate(R.layout.fragment_article_detail, container, false);
+
         mToolbar = (Toolbar) mRootView.findViewById(R.id.toolbar);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getActivity().getWindow().setStatusBarColor(getActivity().getResources().getColor(R.color.color_primary));
-        }
+        }*/
         ((AppCompatActivity)getActivity()).setSupportActionBar(mToolbar);
 
                 /*((AppCompatActivity) getActivity()).getSupportActionBar().setHomeButtonEnabled(true);
@@ -158,12 +159,14 @@ public class ArticleDetailFragment extends Fragment implements
         mToolbar.setNavigationOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                getActivity().finish();
+                ((AppCompatActivity) getActivity()).supportFinishAfterTransition();
             }
         });
         mToolbar.setTitle("");
-        setupToolBar();
-
+        //setupToolBar();
+        appBar = (AppBarLayout)mRootView.findViewById(R.id.app_bar);
+        if(getActivity() instanceof DetailScreenInterface && isVisibleToUser)
+            ((DetailScreenInterface)getActivity()).viewLoaded(appBar);
 
         setHasOptionsMenu(true);
 
@@ -235,6 +238,10 @@ public class ArticleDetailFragment extends Fragment implements
         bodyContainer.setOnScrollChangeListener(this);
 
         appBar = (AppBarLayout)mRootView.findViewById(R.id.app_bar);
+
+        /*if(getActivity() instanceof DetailScreenInterface && isVisibleToUser)
+            ((DetailScreenInterface)getActivity()).viewLoaded(appBar);*/
+
         appBar.addOnOffsetChangedListener(this);
         titleView = (TextView) mRootView.findViewById(R.id.article_title);
         bylineView = (TextView) mRootView.findViewById(R.id.article_byline);
@@ -268,23 +275,7 @@ public class ArticleDetailFragment extends Fragment implements
 
 
             //need to use color palette here
-            Picasso.with(getActivity()).load(mCursor.getString(ArticleLoader.Query.PHOTO_URL)).into(new Target() {
-                @Override
-                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                    mPhotoView.setImageBitmap(bitmap);
-                    paletteGenerator(bitmap,12);
-                }
-
-                @Override
-                public void onBitmapFailed(Drawable errorDrawable) {
-
-                }
-
-                @Override
-                public void onPrepareLoad(Drawable placeHolderDrawable) {
-
-                }
-            });
+            Picasso.with(getActivity()).load(mCursor.getString(ArticleLoader.Query.PHOTO_URL)).into(target);
 
 
 
@@ -318,27 +309,69 @@ public class ArticleDetailFragment extends Fragment implements
         }
     }
 
+
+    Target target = new Target() {
+        @Override
+        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+            Log.d(TAG,"onBitmap Loaded");
+            mPhotoView.setImageBitmap(bitmap);
+            paletteGenerator(bitmap,12);
+            if(getActivity() instanceof DetailScreenInterface)
+            {
+                ((DetailScreenInterface)getActivity()).imageLoaded();
+            }
+        }
+
+        @Override
+        public void onBitmapFailed(Drawable errorDrawable) {
+            Log.d(TAG,"onBitmap failed");
+            if(getActivity() instanceof DetailScreenInterface)
+            {
+                ((DetailScreenInterface)getActivity()).imageLoaded();
+            }
+        }
+
+        @Override
+        public void onPrepareLoad(Drawable placeHolderDrawable) {
+            Log.d(TAG,"onPrepare Load");
+            mPhotoView.setImageDrawable(placeHolderDrawable);
+            if(getActivity() instanceof DetailScreenInterface)
+            {
+                ((DetailScreenInterface)getActivity()).imageLoaded();
+            }
+        }
+    };
+
     public void paletteGenerator( Bitmap bitmap,int colorCount){
         Palette.from(bitmap).maximumColorCount(colorCount).generate(new Palette.PaletteAsyncListener() {
             @TargetApi(Build.VERSION_CODES.LOLLIPOP)
             @Override
             public void onGenerated(Palette palette) {
-                Log.d(TAG,"palette onGenerated");
+
                 // Get the "vibrant" color swatch based on the bitmap
                 Palette.Swatch vibrant = palette.getVibrantSwatch();
+
                 if (vibrant != null) {
                     // Set the background color of a layout based on the vibrant color
                     mCurrentToolbarColor = vibrant.getRgb();
 
+
                     // Update the title TextView with the proper text color
                     mCurrentToolbarTitleColor = vibrant.getTitleTextColor();
-                    if(getActivity()!=null) {
+                    //Log.d(TAG,"palette onGenerated:mCurrentToolbarTitleColor:"+Integer.toHexString(mCurrentToolbarTitleColor)+" mCurrentToolbarColor:"+Integer.toHexString(mCurrentToolbarColor));
+                    if(getActivity()!=null && isVisibleToUser) {
                         getActivity().getWindow().setStatusBarColor(mCurrentToolbarColor);
                     }
                 }
             }
         });
 
+    }
+
+    public interface DetailScreenInterface{
+        public void viewLoaded(AppBarLayout appBarLayout);
+
+        void imageLoaded();
     }
 
 
@@ -389,14 +422,23 @@ public class ArticleDetailFragment extends Fragment implements
     @Override
     public void setUserVisibleHint(boolean isVisibleToUser) {
         super.setUserVisibleHint(isVisibleToUser);
+
         if(isVisibleToUser){
-            Log.d(TAG,"setUserVisibleHint");
-                getLoaderManager().initLoader(0, null, this);
+            Log.d(TAG,"setUserVisibleHint:");
+               // getLoaderManager().initLoader(0, null, this);
                 //setupToolBar();
         }
 
         this.isVisibleToUser = isVisibleToUser;
+        if(getActivity()!=null && mCursor!=null) {
+            Picasso.with(getActivity()).load(mCursor.getString(ArticleLoader.Query.PHOTO_URL)).into(target);
+        }
+    }
 
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        Log.d(TAG,"onHiddenChanged:"+hidden);
     }
 
     public void setupToolBar(){
@@ -408,6 +450,12 @@ public class ArticleDetailFragment extends Fragment implements
             collapsingToolbarLayout.setTitle("");
             collapsingToolbarLayout.setTitleEnabled(false);
         }
+
+
+    }
+
+    public void setupStatusAndNavigation(){
+
     }
 
     @Override
