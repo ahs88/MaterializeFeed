@@ -41,6 +41,7 @@ public class ArticleListActivity extends AppCompatActivity implements
         LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String TAG = ArticleListActivity.class.getSimpleName();
+
     public static final String EXTRA_IMAGE = ArticleListActivity.class.getPackage().getName();
     private Toolbar mToolbar;
     private SwipeRefreshLayout mSwipeRefreshLayout;
@@ -53,7 +54,9 @@ public class ArticleListActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_article_list);
 
         //mToolbar = (Toolbar) findViewById(R.id.toolbar);
+
         mContext = this;
+
 
         final View toolbarContainerView = findViewById(R.id.toolbar_container);
 

@@ -16,7 +16,9 @@ import android.support.v4.view.ViewCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
+
 import android.transition.Slide;
+
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.MenuItem;
@@ -38,10 +40,12 @@ import java.util.HashMap;
  * An activity representing a single Article detail screen, letting you swipe between articles.
  */
 public class ArticleDetailActivity extends AppCompatActivity
+
         implements LoaderManager.LoaderCallbacks<Cursor>,ArticleDetailFragment.DetailScreenInterface {
 
     private static final String TAG = ArticleDetailActivity.class.getName();
     public static final String IMAGE_URL = "IMAGE_URL";
+
     private Cursor mCursor;
     private long mStartId;
 
@@ -237,7 +241,9 @@ public class ArticleDetailActivity extends AppCompatActivity
     public boolean onOptionsItemSelected(MenuItem item) {
         Log.d(TAG,"onOptionsItemSelected:"+item);
         if(item.getItemId() == android.R.id.home){
+
             ActivityCompat.finishAfterTransition(this);
+
             return true;
         }
         return super.onOptionsItemSelected(item);
